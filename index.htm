@@ -61,14 +61,15 @@
         .acc-btn { font-size: 16px; font-family: serif; padding: 6px 12px; background-color: #f1f5f9;}
         .acc-btn.active { background-color: var(--danger); color: white; border-color: var(--danger); box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3); }
 
-        /* 休止符專用按鈕 */
         .btn-action-rest { background-color: #e2e8f0; color: #334155; border-color: #cbd5e1; font-weight: 700; margin-left: 5px; }
         .btn-action-rest:hover:not(:disabled) { background-color: #cbd5e1; color: #0f172a; }
+        .btn-edit { background-color: #fffbeb; color: #b45309; border-color: #fde68a; }
+        .btn-edit:hover:not(:disabled) { background-color: #fef3c7; color: #92400e; }
 
-        /* 禁用狀態 */
         button:disabled, .toggle-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; background-color: #f3f4f6; color: #9ca3af; }
 
-        .btn-play { background-color: var(--success); color: white; border: none; }
+        .btn-play { background-color: var(--success); color: white; border: none; transition: background-color 0.3s; }
+        .btn-play:hover { filter: brightness(0.9); transform: translateY(-2px); }
         .btn-export { background-color: var(--primary); color: white; border: none; }
         .btn-danger { color: var(--danger); border-color: var(--danger); background-color: #fff0f2; }
         .btn-reset { background-color: var(--warning); color: white; border: none; }
@@ -90,6 +91,10 @@
         .extended-row { display: none; }
         .show-extended .extended-row { display: flex; }
         
+        /* 附加標記面板收合 */
+        .annotation-container { display: none; margin-top: 5px; }
+        .annotation-container.show-annotation { display: flex; gap: 6px; flex-wrap: wrap; }
+
         #tempo-input { width: 60px; text-align: center; font-weight: 800; color: var(--primary-dark); }
         #note-text-input { width: 130px; }
 
@@ -134,11 +139,15 @@
             border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); 
             padding: 40px; box-sizing: border-box; border: 1px solid var(--border); overflow-x: auto;
             user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; flex-grow: 1;
+            transition: all 0.3s;
         }
         #score-header { display: flex; justify-content: center; position: relative; margin-bottom: 30px; min-height: 60px; width: 100%; }
         .score-title-display { font-size: 32px; font-weight: 900; color: var(--text-main); text-align: center; max-width: 60%; letter-spacing: 1px;}
         .score-student-info { position: absolute; right: 10px; top: 0; text-align: right; font-size: 15px; font-weight: 600; color: var(--text-muted); line-height: 1.6; }
-        #score-container { cursor: crosshair; }
+        #score-container { cursor: crosshair; position: relative; }
+
+        /* SVG 動態播放游標 CSS */
+        #svg-playback-cursor { transition: x 0.05s linear, width 0.05s linear; }
 
         @media (max-width: 950px) {
             .top-header-row { flex-direction: column; }
@@ -158,7 +167,6 @@
 
     <h2>🎼 藍田循道衞理小學 校本打譜網站</h2>
 
-    <!-- 快捷鍵視窗 -->
     <div id="shortcut-modal" class="modal-overlay" onclick="closeShortcuts(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="modal-close" onclick="closeShortcuts(event)">&times;</span>
@@ -176,13 +184,14 @@
                 <span><span class="kbd">+</span> = ♯ 升號</span>
                 <span><span class="kbd">-</span> = ♭ 降號</span>
                 <span><span class="kbd">=</span> = ♮ 還原</span>
+                <span><span class="kbd">Backspace</span> = 刪除一個音</span>
+                <span><span class="kbd">Ctrl+Z</span> = 還原上一步</span>
             </div>
         </div>
     </div>
 
     <div class="toolbar-container">
         
-        <!-- 頂部列：學生資訊 與 快捷鍵按鈕 -->
         <div class="top-header-row">
             <details class="info-details" open>
                 <summary><span>📝 填寫樂曲資料與學生資訊</span> <span>▼</span></summary>
@@ -212,7 +221,6 @@
             <button class="btn-shortcut" onclick="document.getElementById('shortcut-modal').classList.add('active')">⌨️ 快捷鍵清單</button>
         </div>
 
-        <!-- 1. 系統與版面 / 小節編輯 / 播放與輸出 -->
         <div class="toolbar-row">
             <div class="tool-group">
                 <span class="tool-label">系統與版面</span>
@@ -238,23 +246,22 @@
                 <button onclick="changeActiveMeasure(1)">▶</button>
                 <button onclick="addMeasure()">➕ 新增</button>
                 <button class="btn-danger" onclick="clearCurrentMeasure()">清空</button>
-                <button class="btn-danger" onclick="deleteCurrentMeasure()">🗑️</button>
+                <button class="btn-danger" onclick="deleteCurrentMeasure()">🗑️ 刪除小節</button>
             </div>
 
             <div class="tool-group" style="margin-left: auto; border: none;">
                 <span class="tool-label">播放與輸出</span>
                 <span style="font-size: 13px; font-weight: 800; color: var(--text-main);">BPM:</span>
                 <input type="number" id="tempo-input" min="40" max="200" value="100">
-                <button class="btn-play" onclick="playScore()">▶ 播放</button>
+                <button class="btn-play" id="btn-play" onclick="togglePlay()">▶ 播放</button>
                 <button class="btn-export" onclick="exportWav()">⬇️ .wav</button>
                 <button onclick="window.print()">🖨️ 列印 / PDF</button>
             </div>
         </div>
 
-        <!-- 2. 音符時值 / 標記文字 -->
         <div class="toolbar-row">
             <div class="tool-group">
-                <span class="tool-label">音符時值 (空間不足會自動鎖定)</span>
+                <span class="tool-label">音符時值</span>
                 <button class="toggle-btn" id="btn-w" onclick="setDuration('w', this)">全音符</button>
                 <button class="toggle-btn" id="btn-h" onclick="setDuration('h', this)">二分</button>
                 <button class="toggle-btn active" id="btn-q" onclick="setDuration('q', this)">♩ 四分</button>
@@ -263,30 +270,40 @@
                 <button class="toggle-btn" id="btn-dot" onclick="toggleDot()">附點(.)</button>
                 <button class="btn-action-rest" id="btn-rest" onclick="addRest()">⏸️ 休止符</button>
             </div>
+            
+            <div class="tool-group">
+                <span class="tool-label">修正操作</span>
+                <button class="btn-edit" onclick="undo()">↩️ 還原上一步</button>
+                <button class="btn-edit" onclick="deleteLastNote()">⌫ 刪除一個音</button>
+            </div>
 
             <div class="tool-group" style="border: none; flex: 1;">
-                <span class="tool-label">附加標記 (將顯示於下個輸入的音符)</span>
-                <input type="text" id="note-text-input" placeholder="自訂文字(如指法)">
-                <select id="auto-annotate-select">
-                    <option value="none" selected>無自動標記</option>
-                    <option value="solfege">自動標註唱名 (d,r,m)</option>
-                    <option value="note">自動標註音名 (C,D,E)</option>
-                </select>
-                <select id="note-text-pos">
-                    <option value="top">放上方</option>
-                    <option value="bottom">放下方</option>
-                </select>
+                <div style="display:flex; justify-content:space-between; width: 100%; margin-bottom: 2px;">
+                    <span class="tool-label">附加標記</span>
+                    <button onclick="document.getElementById('annotation-panel').classList.toggle('show-annotation')" style="padding: 2px 8px; font-size:12px; height: 20px;">↕️ 展開/收合</button>
+                </div>
+                <div id="annotation-panel" class="annotation-container">
+                    <input type="text" id="note-text-input" placeholder="自訂文字(如指法)">
+                    <select id="auto-annotate-select">
+                        <option value="none" selected>無自動標記</option>
+                        <option value="solfege">自動標註唱名 (d,r,m)</option>
+                        <option value="note">自動標註音名 (C,D,E)</option>
+                    </select>
+                    <select id="note-text-pos">
+                        <option value="top">放上方</option>
+                        <option value="bottom">放下方</option>
+                    </select>
+                </div>
             </div>
         </div>
 
-        <!-- 3. 輸入模式 / 臨時記號 / 唱名面板 -->
         <div class="toolbar-row" style="flex-direction: column; align-items: stretch;">
             <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:center;">
                 <div class="tool-group" style="border: none; padding: 0;">
                     <span class="tool-label">輸入模式</span>
                     <select id="input-mode-select" onchange="updateInputLabels()" style="padding: 6px 10px; font-size: 13px;">
-                        <option value="solfege" selected>首調唱名 (do, re, mi)</option>
-                        <option value="notename">絕對音名 (C, D, E)</option>
+                        <option value="solfege" selected>唱名 (do, re, mi)</option>
+                        <option value="notename">音名 (C, D, E)</option>
                     </select>
                 </div>
                 
@@ -300,7 +317,6 @@
                 <button onclick="toggleExtendedSolfege()" style="margin-left: auto; padding: 6px 15px; font-size:13px; background-color: #f8fafc;">↕️ 展開/收合八度</button>
             </div>
             
-            <!-- 彩色唱名按鈕面板 -->
             <div id="solfege-panel-wrapper" style="width: 100%;">
                 <div id="solfege-panel" class="solfege-container">
                     <div class="solfege-row extended-row">
@@ -331,7 +347,8 @@
                         <button class="solfege-btn c-teal" data-deg="4" data-oct="-1" onclick="addSolfegeNote(4, -1)">so,</button>
                         <button class="solfege-btn c-blue" data-deg="5" data-oct="-1" onclick="addSolfegeNote(5, -1)">la,</button>
                         <button class="solfege-btn c-purple" data-deg="6" data-oct="-1" onclick="addSolfegeNote(6, -1)">ti,</button>
-                        <button class="solfege-btn c-red" data-deg="0" data-oct="0" onclick="addSolfegeNote(0, 0)">do</button>
+                        <button class="solfege-btn c-red" data-deg="0" data-oct="0" onclick="addSolfegeNote(0, 0)">do</button>                        
+                        <div style="flex: -1"></div>
                     </div>
                 </div>
             </div>
@@ -362,7 +379,11 @@
         let activeAccidental = null; let maxQuarterBeats = 4; 
         let isPrinting = false; 
 
-        // 樂理與色彩設定
+        // 播放與歷史紀錄狀態
+        let isPlaying = false;
+        let historyStack = [];
+        let vexNotesCache = []; // 儲存渲染後的 VexFlow 音符，供播放游標定位使用
+
         const keySignatureMap = { 'C': {}, 'G': { 'f': '#' }, 'D': { 'f': '#', 'c': '#' }, 'F': { 'b': 'b' }, 'Bb': { 'b': 'b', 'e': 'b' } };
         const diatonicMaps = {
             'C':  [ {l:'c', o:4}, {l:'d', o:4}, {l:'e', o:4}, {l:'f', o:4}, {l:'g', o:4}, {l:'a', o:4}, {l:'b', o:4} ],
@@ -374,6 +395,36 @@
         const noteColors = ["#dc2626", "#ea580c", "#d97706", "#16a34a", "#0d9488", "#2563eb", "#9333ea"];
 
         const previewSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sine" }, envelope: { attack: 0.02, decay: 0.1, sustain: 0.2, release: 1.0 } }).toDestination();
+
+        // ---------------- 狀態與歷史紀錄管理 (Undo / Backspace) ----------------
+        function saveState() {
+            historyStack.push(JSON.stringify({ m: measures, a: activeMeasureIndex }));
+            if (historyStack.length > 50) historyStack.shift(); 
+        }
+
+        function undo() {
+            if (historyStack.length > 0) {
+                let state = JSON.parse(historyStack.pop());
+                measures = state.m; activeMeasureIndex = state.a;
+                updateMeasureIndicator(); renderScore();
+            } else {
+                alert("已經是最初狀態了！");
+            }
+        }
+
+        function deleteLastNote() {
+            saveState();
+            if (measures[activeMeasureIndex].length > 0) {
+                measures[activeMeasureIndex].pop();
+            } else if (activeMeasureIndex > 0) {
+                activeMeasureIndex--; measures.pop(); 
+                if(measures[activeMeasureIndex] && measures[activeMeasureIndex].length > 0) {
+                    measures[activeMeasureIndex].pop();
+                }
+                updateMeasureIndicator();
+            }
+            renderScore();
+        }
 
         function closeShortcuts(e) { document.getElementById('shortcut-modal').classList.remove('active'); }
         
@@ -412,7 +463,6 @@
                     let acc = keySignatureMap[currentKeySig][noteLetter.toLowerCase()] || "";
                     let name = noteLetter + acc;
                     
-                    // 根據絕對八度給予標記
                     if (absoluteOctave === 5) name += "'";
                     else if (absoluteOctave === 6) name += "''";
                     else if (absoluteOctave === 7) name += "'''";
@@ -429,7 +479,11 @@
 
         document.addEventListener('keydown', function(event) {
             if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') return;
+            
+            if (event.ctrlKey && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); return; }
             const key = event.key.toLowerCase();
+            if (key === 'backspace') { event.preventDefault(); deleteLastNote(); return; }
+
             switch(key) {
                 case '1': document.getElementById('btn-do').click(); break;
                 case '2': document.getElementById('btn-re').click(); break;
@@ -451,7 +505,7 @@
             }
         });
 
-        // 長按選擇小節引擎
+        // ---------------- 長按選擇小節引擎 ----------------
         let pressTimer; let isLongPress = false; let startX, startY;
         const scoreContainer = document.getElementById('score-container');
 
@@ -518,6 +572,7 @@
         }
 
         function resetScore() {
+            saveState(); 
             if(!confirm("確定要重新創作嗎？所有進度將會遺失。")) return;
             measures = [ [] ]; activeMeasureIndex = 0;
             currentDuration = 'q'; currentTimeSig = '4/4'; currentKeySig = 'C';
@@ -538,9 +593,10 @@
             let newIndex = activeMeasureIndex + delta;
             if (newIndex >= 0 && newIndex < measures.length) { activeMeasureIndex = newIndex; updateMeasureIndicator(); renderScore(); }
         }
-        function addMeasure() { measures.splice(activeMeasureIndex + 1, 0, []); activeMeasureIndex++; updateMeasureIndicator(); renderScore(); }
-        function clearCurrentMeasure() { measures[activeMeasureIndex] = []; renderScore(); }
+        function addMeasure() { saveState(); measures.splice(activeMeasureIndex + 1, 0, []); activeMeasureIndex++; updateMeasureIndicator(); renderScore(); }
+        function clearCurrentMeasure() { saveState(); measures[activeMeasureIndex] = []; renderScore(); }
         function deleteCurrentMeasure() {
+            saveState();
             if (measures.length <= 1) measures[0] = [];
             else { measures.splice(activeMeasureIndex, 1); if (activeMeasureIndex >= measures.length) activeMeasureIndex = measures.length - 1; }
             updateMeasureIndicator(); renderScore();
@@ -595,11 +651,13 @@
         }
 
         function changeTimeSig(sig) {
+            saveState();
             currentTimeSig = sig; maxQuarterBeats = sig === '2/4' ? 2 : sig === '3/4' ? 3 : sig === '4/4' ? 4 : 3; 
             measures = [ [] ]; activeMeasureIndex = 0; updateMeasureIndicator(); renderScore();
         }
         
         function changeKeySig(sig) { 
+            saveState();
             currentKeySig = sig; let isRhythmMode = (sig === 'Rhythm');
             document.getElementById('solfege-panel-wrapper').style.display = isRhythmMode ? 'none' : 'block';
             document.getElementById('accidental-panel-wrapper').style.opacity = isRhythmMode ? '0.3' : '1';
@@ -617,9 +675,8 @@
             let currentBeats = getCurrentMeasureBeats();
             if (currentBeats + neededBeats > maxQuarterBeats + 0.01) { alert(`⚠️ 第 ${activeMeasureIndex + 1} 節空間不足！`); return; }
 
-            measures[activeMeasureIndex].push({ 
-                isRest: true, duration: currentDuration, isDotted: isDotted 
-            });
+            saveState();
+            measures[activeMeasureIndex].push({ isRest: true, duration: currentDuration, isDotted: isDotted });
 
             if (Math.abs((currentBeats + neededBeats) - maxQuarterBeats) < 0.01) {
                 if (activeMeasureIndex === measures.length - 1) measures.push([]);
@@ -632,6 +689,8 @@
             let neededBeats = getNoteBeats(currentDuration, isDotted);
             let currentBeats = getCurrentMeasureBeats();
             if (currentBeats + neededBeats > maxQuarterBeats + 0.01) { alert(`⚠️ 第 ${activeMeasureIndex + 1} 節空間不足！`); return; }
+
+            saveState(); 
 
             let textInput = document.getElementById('note-text-input');
             let customText = textInput.value.trim();
@@ -714,9 +773,10 @@
             return beams;
         }
 
+        // --- 繪圖渲染引擎 ---
         function renderScore() {
             const container = document.getElementById("score-container");
-            container.innerHTML = ""; renderedStavesInfo = [];
+            container.innerHTML = ""; renderedStavesInfo = []; vexNotesCache = [];
             
             let wrapperWidth = document.getElementById("score-wrapper").clientWidth - 80;
             const PAGE_WIDTH = Math.max(800, wrapperWidth); 
@@ -729,11 +789,10 @@
             measures.forEach((measureNotes, index) => {
                 let requiredMinWidth = 0, voice = null, vexNotes = [];
                 if (measureNotes.length > 0) {
-                    vexNotes = measureNotes.map(n => {
+                    vexNotes = measureNotes.map((n, idx) => {
                         let note = new StaveNote({ keys: [n.isRest ? "b/4" : n.baseKey], duration: n.isRest ? n.duration + "r" : n.duration });
                         if (n.explicitAccidental && !isRhythmMode && !n.isRest) note.addModifier(new Accidental(n.explicitAccidental), 0);
                         if (n.isDotted) Dot.buildAndAttach([note], { all: true });
-                        
                         if (useColor && !n.isRest && n.deg !== undefined && n.deg >= 0 && n.deg <= 6) {
                             note.setStyle({ fillStyle: noteColors[n.deg], strokeStyle: noteColors[n.deg] });
                         }
@@ -806,6 +865,7 @@
                         beams.forEach(b => b.setContext(context).draw());
                         
                         ml.vexNotes.forEach(note => {
+                            vexNotesCache.push(note); // 儲存供播放游標使用
                             let yHead = note.getYs()[0];
                             if (yHead - 35 < lineMinY) lineMinY = yHead - 35; 
                             if (yHead + 45 > lineMaxY) lineMaxY = yHead + 45;
@@ -830,7 +890,6 @@
                             textNode.setAttribute("text-anchor", "middle");
                             textNode.setAttribute("font-family", "'Segoe UI', Arial, sans-serif");
                             textNode.setAttribute("font-size", "15px"); textNode.setAttribute("font-weight", "800");
-                            
                             textNode.setAttribute("fill", (useColor && !data.isRest && data.deg >= 0) ? noteColors[data.deg] : "#1e3a8a"); 
                             textNode.textContent = data.text;
                             svg.appendChild(textNode);
@@ -840,24 +899,99 @@
 
                 currentY += 160; 
             });
+
+            // 【新功能】建立隱藏的橘金色 SVG 播放游標
+            const svg = container.querySelector("svg");
+            if (svg && !isPrinting) {
+                let cursorRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                cursorRect.setAttribute("id", "svg-playback-cursor");
+                cursorRect.setAttribute("fill", "rgba(245, 158, 11, 0.4)");
+                cursorRect.setAttribute("rx", "6"); // 圓角
+                cursorRect.setAttribute("ry", "6");
+                cursorRect.setAttribute("display", "none");
+                cursorRect.style.pointerEvents = "none";
+                svg.appendChild(cursorRect);
+            }
+
             renderer.resize(PAGE_WIDTH, currentY + 20);
             updateRhythmButtonsState(); 
         }
 
+        // --- 播放與追蹤游標引擎 ---
+        async function togglePlay() {
+            if (isPlaying) { stopPlayback(); } else { await playScore(); }
+        }
+
+        function stopPlayback() {
+            Tone.Transport.stop(); Tone.Transport.cancel();
+            isPlaying = false;
+            let btn = document.getElementById('btn-play');
+            btn.innerHTML = "▶ 播放"; btn.style.backgroundColor = "var(--success)";
+            
+            // 隱藏游標
+            let cursor = document.getElementById("svg-playback-cursor");
+            if (cursor) cursor.setAttribute("display", "none");
+        }
+
         async function playScore() {
-            let allNotes = measures.flat(); if (allNotes.length === 0) return alert("樂譜是空的！");
+            let allNotesCount = measures.flat().length;
+            if (allNotesCount === 0) return alert("樂譜是空的！");
+            
             await Tone.start(); 
+            isPlaying = true;
+            let playBtn = document.getElementById('btn-play');
+            playBtn.innerHTML = "⏹ 停止"; playBtn.style.backgroundColor = "var(--danger)";
+            
             let bpm = parseInt(document.getElementById('tempo-input').value) || 100;
-            let secondsPerQuarter = 60 / bpm; 
+            Tone.Transport.cancel(); Tone.Transport.stop(); Tone.Transport.bpm.value = bpm;
+            
             const synth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sine" }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.3, release: 1.5 } }).toDestination();
-            let timeOffset = 0, now = Tone.now();
-            allNotes.forEach((note) => {
-                let durationSeconds = getNoteBeats(note.duration, note.isDotted) * secondsPerQuarter;
-                if (!note.isRest) {
-                    synth.triggerAttackRelease(note.toneKey, durationSeconds * 0.95, now + timeOffset);
-                }
-                timeOffset += durationSeconds; 
+            
+            let timeOffset = 0.1; 
+            let secondsPerQuarter = 60 / bpm;
+            let flatNoteIndex = 0; // 用來對應 vexNotesCache
+            
+            measures.forEach((measureNotes, mIdx) => {
+                let stave = renderedStavesInfo.find(s => s.index === mIdx).stave;
+                let staveY = stave.getYForLine(0) - 20; // 游標高度基準
+                
+                measureNotes.forEach((note, nIdx) => {
+                    let durationSeconds = getNoteBeats(note.duration, note.isDotted) * secondsPerQuarter;
+                    let vNote = vexNotesCache[flatNoteIndex];
+                    
+                    if (!note.isRest) {
+                        Tone.Transport.schedule((time) => {
+                            synth.triggerAttackRelease(note.toneKey, durationSeconds * 0.95, time);
+                        }, timeOffset);
+                    }
+
+                    // 視覺游標排程
+                    if (vNote) {
+                        Tone.Transport.schedule((time) => {
+                            Tone.Draw.schedule(() => {
+                                let cursor = document.getElementById("svg-playback-cursor");
+                                if (cursor) {
+                                    let noteX = vNote.getAbsoluteX();
+                                    cursor.setAttribute("x", noteX - 10);
+                                    cursor.setAttribute("y", staveY);
+                                    cursor.setAttribute("width", 30);
+                                    cursor.setAttribute("height", 90);
+                                    cursor.setAttribute("display", "block");
+                                }
+                            }, time);
+                        }, timeOffset);
+                    }
+
+                    timeOffset += durationSeconds;
+                    flatNoteIndex++;
+                });
             });
+
+            Tone.Transport.schedule((time) => {
+                Tone.Draw.schedule(() => { stopPlayback(); }, time);
+            }, timeOffset);
+
+            Tone.Transport.start();
         }
 
         async function exportWav() {
@@ -870,13 +1004,12 @@
             allNotes.forEach(n => { totalSeconds += getNoteBeats(n.duration, n.isDotted) * secondsPerQuarter; });
 
             const buffer = await Tone.Offline(({ transport }) => {
+                transport.bpm.value = bpm;
                 const offlineSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sine" }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.3, release: 1.5 } }).toDestination();
                 let timeOffset = 0;
                 allNotes.forEach((note) => {
                     let durationSeconds = getNoteBeats(note.duration, note.isDotted) * secondsPerQuarter;
-                    if (!note.isRest) {
-                        offlineSynth.triggerAttackRelease(note.toneKey, durationSeconds * 0.95, timeOffset);
-                    }
+                    if (!note.isRest) offlineSynth.triggerAttackRelease(note.toneKey, durationSeconds * 0.95, timeOffset);
                     timeOffset += durationSeconds;
                 });
             }, totalSeconds + 2); 
