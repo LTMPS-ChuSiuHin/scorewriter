@@ -55,7 +55,6 @@
         select:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); }
         input[type="text"], input[type="number"] { cursor: text; background-color: #f9fafb; }
 
-        /* 特殊狀態按鈕 */
         .toggle-btn { min-width: 48px; background-color: #f1f5f9; }
         .toggle-btn.active { background-color: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3); transform: translateY(-1px); }
         .acc-btn { font-size: 16px; font-family: serif; padding: 6px 12px; background-color: #f1f5f9;}
@@ -75,7 +74,6 @@
         .btn-reset { background-color: var(--warning); color: white; border: none; }
         .btn-shortcut { background-color: var(--primary-light); color: var(--primary-dark); border: none; font-weight: 700; padding: 12px 20px; }
 
-        /* 七彩唱名按鈕配色 */
         .solfege-container { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 5px; }
         .solfege-row { display: flex; gap: 6px; flex-wrap: wrap; }
         .solfege-btn { font-weight: 800; padding: 10px 8px; flex: 1; min-width: 45px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); }
@@ -90,15 +88,12 @@
 
         .extended-row { display: none; }
         .show-extended .extended-row { display: flex; }
-        
-        /* 附加標記面板收合 */
         .annotation-container { display: none; margin-top: 5px; }
         .annotation-container.show-annotation { display: flex; gap: 6px; flex-wrap: wrap; }
-
+        
         #tempo-input { width: 60px; text-align: center; font-weight: 800; color: var(--primary-dark); }
         #note-text-input { width: 130px; }
 
-        /* 學生資訊面板 */
         .top-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; width: 100%; }
         .info-details {
             flex: 1; background-color: rgba(255, 255, 255, 0.9); border-radius: 12px;
@@ -118,7 +113,6 @@
         .student-input-group label { font-weight: bold; color: var(--text-main); }
         .student-input-group input[type="text"], .student-input-group input[type="number"] { padding: 6px 10px; }
 
-        /* 快捷鍵視窗 (Modal) */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);
@@ -137,29 +131,37 @@
         #score-wrapper {
             width: 100%; max-width: 1200px; background-color: #ffffff; 
             border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); 
-            padding: 40px; box-sizing: border-box; border: 1px solid var(--border); overflow-x: auto;
+            padding: 40px; box-sizing: border-box; border: 1px solid var(--border);
+            height: 760px; max-height: 75vh; overflow-y: auto; overflow-x: auto; scroll-behavior: smooth;
             user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; flex-grow: 1;
-            transition: all 0.3s;
         }
+        
+        #score-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }
+        #score-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+        #score-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; border: 2px solid #f1f5f9; }
+        #score-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
         #score-header { display: flex; justify-content: center; position: relative; margin-bottom: 30px; min-height: 60px; width: 100%; }
         .score-title-display { font-size: 32px; font-weight: 900; color: var(--text-main); text-align: center; max-width: 60%; letter-spacing: 1px;}
-        .score-student-info { position: absolute; right: 10px; top: 0; text-align: right; font-size: 15px; font-weight: 600; color: var(--text-muted); line-height: 1.6; }
+        
+        /* 學生資料排版：一列顯示 */
+        .score-student-info { position: absolute; right: 10px; top: 0; text-align: right; font-size: 16px; font-weight: 600; color: var(--text-main); white-space: pre; }
+        
         #score-container { cursor: crosshair; position: relative; }
-
-        /* SVG 動態播放游標 CSS */
         #svg-playback-cursor { transition: x 0.05s linear, width 0.05s linear; }
 
         @media (max-width: 950px) {
             .top-header-row { flex-direction: column; }
             .btn-shortcut { width: 100%; }
             #score-wrapper { padding: 20px; }
+            .score-student-info { font-size: 13px; right: 0; }
         }
 
         @media print {
             @page { margin: 0; size: auto; } 
             body { background: white; padding: 1.5cm; } 
             .toolbar-container, h2, .modal-overlay { display: none !important; } 
-            #score-wrapper { box-shadow: none; border: none; padding: 0; max-width: 100%; overflow: visible; }
+            #score-wrapper { box-shadow: none; border: none; padding: 0; max-width: 100%; height: auto; overflow: visible; }
         }
     </style>
 </head>
@@ -254,7 +256,7 @@
                 <span style="font-size: 13px; font-weight: 800; color: var(--text-main);">BPM:</span>
                 <input type="number" id="tempo-input" min="40" max="200" value="100">
                 <button class="btn-play" id="btn-play" onclick="togglePlay()">▶ 播放</button>
-                <button class="btn-export" onclick="exportWav()">⬇️ .wav</button>
+                <button class="btn-export" id="export-btn" onclick="exportWav()">⬇️ .wav</button>
                 <button onclick="window.print()">🖨️ 列印 / PDF</button>
             </div>
         </div>
@@ -286,8 +288,8 @@
                     <input type="text" id="note-text-input" placeholder="自訂文字(如指法)">
                     <select id="auto-annotate-select">
                         <option value="none" selected>無自動標記</option>
-                        <option value="solfege">自動標註唱名 (d,r,m)</option>
-                        <option value="note">自動標註音名 (C,D,E)</option>
+                        <option value="solfege">自動標註唱名 (d, r, m)</option>
+                        <option value="note">自動標註音名 (C, D, E)</option>
                     </select>
                     <select id="note-text-pos">
                         <option value="top">放上方</option>
@@ -347,22 +349,17 @@
                         <button class="solfege-btn c-teal" data-deg="4" data-oct="-1" onclick="addSolfegeNote(4, -1)">so,</button>
                         <button class="solfege-btn c-blue" data-deg="5" data-oct="-1" onclick="addSolfegeNote(5, -1)">la,</button>
                         <button class="solfege-btn c-purple" data-deg="6" data-oct="-1" onclick="addSolfegeNote(6, -1)">ti,</button>
-                        <button class="solfege-btn c-red" data-deg="0" data-oct="0" onclick="addSolfegeNote(0, 0)">do</button>                        
-                        <div style="flex: -1"></div>
+                        <div style="flex: 1;"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 樂譜工作區 -->
     <div id="score-wrapper">
         <div id="score-header">
             <div class="score-title-display" id="display-song-title">未命名樂曲</div>
-            <div class="score-student-info">
-                <div id="display-class-name">班別：___ 姓名：___</div>
-                <div id="display-num">學號：___</div>
-            </div>
+            <div class="score-student-info" id="display-student-info">姓名：_________ 班別：____(   )</div>
         </div>
         <div id="score-container"></div>
     </div>
@@ -379,10 +376,9 @@
         let activeAccidental = null; let maxQuarterBeats = 4; 
         let isPrinting = false; 
 
-        // 播放與歷史紀錄狀態
         let isPlaying = false;
         let historyStack = [];
-        let vexNotesCache = []; // 儲存渲染後的 VexFlow 音符，供播放游標定位使用
+        let vexNotesCache = []; 
 
         const keySignatureMap = { 'C': {}, 'G': { 'f': '#' }, 'D': { 'f': '#', 'c': '#' }, 'F': { 'b': 'b' }, 'Bb': { 'b': 'b', 'e': 'b' } };
         const diatonicMaps = {
@@ -396,7 +392,6 @@
 
         const previewSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sine" }, envelope: { attack: 0.02, decay: 0.1, sustain: 0.2, release: 1.0 } }).toDestination();
 
-        // ---------------- 狀態與歷史紀錄管理 (Undo / Backspace) ----------------
         function saveState() {
             historyStack.push(JSON.stringify({ m: measures, a: activeMeasureIndex }));
             if (historyStack.length > 50) historyStack.shift(); 
@@ -407,9 +402,7 @@
                 let state = JSON.parse(historyStack.pop());
                 measures = state.m; activeMeasureIndex = state.a;
                 updateMeasureIndicator(); renderScore();
-            } else {
-                alert("已經是最初狀態了！");
-            }
+            } else { alert("已經是最初狀態了！"); }
         }
 
         function deleteLastNote() {
@@ -430,13 +423,12 @@
         
         function updateScoreHeader() {
             let title = document.getElementById('input-song-title').value.trim() || "未命名樂曲";
-            let cls = document.getElementById('input-class').value.trim() || "___";
-            let name = document.getElementById('input-name').value.trim() || "___";
-            let num = document.getElementById('input-num').value.trim() || "___";
+            let cls = document.getElementById('input-class').value.trim() || "  ";
+            let name = document.getElementById('input-name').value.trim() || "   ";
+            let num = document.getElementById('input-num').value.trim() || " ";
             
             document.getElementById('display-song-title').innerText = title;
-            document.getElementById('display-class-name').innerText = `班別：${cls} 姓名：${name}`;
-            document.getElementById('display-num').innerText = `學號：${num}`;
+            document.getElementById('display-student-info').innerText = `姓名：___${name}______ 班別：__${cls}__( ${num} )`;
 
             let showTitle = document.getElementById('chk-show-title').checked;
             let showInfo = document.getElementById('chk-show-info').checked;
@@ -479,7 +471,6 @@
 
         document.addEventListener('keydown', function(event) {
             if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') return;
-            
             if (event.ctrlKey && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); return; }
             const key = event.key.toLowerCase();
             if (key === 'backspace') { event.preventDefault(); deleteLastNote(); return; }
@@ -505,7 +496,6 @@
             }
         });
 
-        // ---------------- 長按選擇小節引擎 ----------------
         let pressTimer; let isLongPress = false; let startX, startY;
         const scoreContainer = document.getElementById('score-container');
 
@@ -773,12 +763,16 @@
             return beams;
         }
 
-        // --- 繪圖渲染引擎 ---
         function renderScore() {
+            const wrapper = document.getElementById("score-wrapper");
+            let prevScrollTop = wrapper.scrollTop;
+            let prevScrollLeft = wrapper.scrollLeft;
+            let prevWindowScrollY = window.scrollY;
+
             const container = document.getElementById("score-container");
             container.innerHTML = ""; renderedStavesInfo = []; vexNotesCache = [];
             
-            let wrapperWidth = document.getElementById("score-wrapper").clientWidth - 80;
+            let wrapperWidth = wrapper.clientWidth - 80;
             const PAGE_WIDTH = Math.max(800, wrapperWidth); 
             const MARGIN = 10; const MAX_X = PAGE_WIDTH - MARGIN; 
             
@@ -865,7 +859,7 @@
                         beams.forEach(b => b.setContext(context).draw());
                         
                         ml.vexNotes.forEach(note => {
-                            vexNotesCache.push(note); // 儲存供播放游標使用
+                            vexNotesCache.push(note); 
                             let yHead = note.getYs()[0];
                             if (yHead - 35 < lineMinY) lineMinY = yHead - 35; 
                             if (yHead + 45 > lineMaxY) lineMaxY = yHead + 45;
@@ -900,14 +894,12 @@
                 currentY += 160; 
             });
 
-            // 【新功能】建立隱藏的橘金色 SVG 播放游標
             const svg = container.querySelector("svg");
             if (svg && !isPrinting) {
                 let cursorRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
                 cursorRect.setAttribute("id", "svg-playback-cursor");
                 cursorRect.setAttribute("fill", "rgba(245, 158, 11, 0.4)");
-                cursorRect.setAttribute("rx", "6"); // 圓角
-                cursorRect.setAttribute("ry", "6");
+                cursorRect.setAttribute("rx", "6"); cursorRect.setAttribute("ry", "6");
                 cursorRect.setAttribute("display", "none");
                 cursorRect.style.pointerEvents = "none";
                 svg.appendChild(cursorRect);
@@ -915,11 +907,31 @@
 
             renderer.resize(PAGE_WIDTH, currentY + 20);
             updateRhythmButtonsState(); 
+
+            wrapper.scrollTop = prevScrollTop;
+            wrapper.scrollLeft = prevScrollLeft;
+            window.scrollTo(window.scrollX, prevWindowScrollY);
+
+            if (!isPrinting) {
+                let activeStave = renderedStavesInfo.find(s => s.index === activeMeasureIndex);
+                if (activeStave) {
+                    let staveTop = activeStave.y;
+                    let staveBottom = activeStave.y + 160;
+                    let wrapperViewTop = wrapper.scrollTop;
+                    let wrapperViewBottom = wrapper.scrollTop + wrapper.clientHeight;
+
+                    if (staveBottom > wrapperViewBottom - 20) {
+                        wrapper.scrollTop = staveBottom - wrapper.clientHeight + 40;
+                    } else if (staveTop < wrapperViewTop + 20) {
+                        wrapper.scrollTop = Math.max(0, staveTop - 40);
+                    }
+                }
+            }
         }
 
-        // --- 播放與追蹤游標引擎 ---
         async function togglePlay() {
-            if (isPlaying) { stopPlayback(); } else { await playScore(); }
+            if (isPlaying) stopPlayback(); 
+            else await playScore(); 
         }
 
         function stopPlayback() {
@@ -927,8 +939,6 @@
             isPlaying = false;
             let btn = document.getElementById('btn-play');
             btn.innerHTML = "▶ 播放"; btn.style.backgroundColor = "var(--success)";
-            
-            // 隱藏游標
             let cursor = document.getElementById("svg-playback-cursor");
             if (cursor) cursor.setAttribute("display", "none");
         }
@@ -949,11 +959,11 @@
             
             let timeOffset = 0.1; 
             let secondsPerQuarter = 60 / bpm;
-            let flatNoteIndex = 0; // 用來對應 vexNotesCache
+            let flatNoteIndex = 0; 
             
             measures.forEach((measureNotes, mIdx) => {
                 let stave = renderedStavesInfo.find(s => s.index === mIdx).stave;
-                let staveY = stave.getYForLine(0) - 20; // 游標高度基準
+                let staveY = stave.getYForLine(0) - 20; 
                 
                 measureNotes.forEach((note, nIdx) => {
                     let durationSeconds = getNoteBeats(note.duration, note.isDotted) * secondsPerQuarter;
@@ -965,7 +975,6 @@
                         }, timeOffset);
                     }
 
-                    // 視覺游標排程
                     if (vNote) {
                         Tone.Transport.schedule((time) => {
                             Tone.Draw.schedule(() => {
@@ -995,30 +1004,60 @@
         }
 
         async function exportWav() {
-            let allNotes = measures.flat(); if (allNotes.length === 0) return alert("樂譜是空的，無法匯出！");
-            const btn = document.getElementById('export-btn'); btn.innerText = "⏳ 運算中..."; btn.disabled = true;
+            try {
+                let allNotes = measures.flat(); 
+                if (allNotes.length === 0) return alert("樂譜是空的，無法匯出！");
+                
+                const btn = document.getElementById('export-btn'); 
+                btn.innerText = "⏳ 運算中..."; 
+                btn.disabled = true;
 
-            let bpm = parseInt(document.getElementById('tempo-input').value) || 100;
-            let secondsPerQuarter = 60 / bpm;
-            let totalSeconds = 0;
-            allNotes.forEach(n => { totalSeconds += getNoteBeats(n.duration, n.isDotted) * secondsPerQuarter; });
+                // 讓瀏覽器有時間渲染按鈕文字
+                await new Promise(resolve => setTimeout(resolve, 50));
 
-            const buffer = await Tone.Offline(({ transport }) => {
-                transport.bpm.value = bpm;
-                const offlineSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sine" }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.3, release: 1.5 } }).toDestination();
-                let timeOffset = 0;
-                allNotes.forEach((note) => {
-                    let durationSeconds = getNoteBeats(note.duration, note.isDotted) * secondsPerQuarter;
-                    if (!note.isRest) offlineSynth.triggerAttackRelease(note.toneKey, durationSeconds * 0.95, timeOffset);
-                    timeOffset += durationSeconds;
-                });
-            }, totalSeconds + 2); 
+                let bpm = parseInt(document.getElementById('tempo-input').value) || 100;
+                let secondsPerQuarter = 60 / bpm;
+                let totalSeconds = 0;
+                allNotes.forEach(n => { totalSeconds += getNoteBeats(n.duration, n.isDotted) * secondsPerQuarter; });
 
-            const wavData = audioBufferToWav(buffer.get());
-            const blob = new Blob([new DataView(wavData)], { type: 'audio/wav' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement("a"); anchor.download = "Score_Export.wav"; anchor.href = url; anchor.click();
-            btn.innerText = "⬇️ .wav"; btn.disabled = false;
+                const buffer = await Tone.Offline(() => {
+                    const offlineSynth = new Tone.PolySynth(Tone.Synth, { 
+                        oscillator: { type: "sine" }, 
+                        envelope: { attack: 0.05, decay: 0.1, sustain: 0.3, release: 1.5 } 
+                    }).toDestination();
+                    
+                    let timeOffset = 0;
+                    allNotes.forEach((note) => {
+                        let durationSeconds = getNoteBeats(note.duration, note.isDotted) * secondsPerQuarter;
+                        if (!note.isRest) {
+                            offlineSynth.triggerAttackRelease(note.toneKey, durationSeconds * 0.95, timeOffset);
+                        }
+                        timeOffset += durationSeconds;
+                    });
+                }, totalSeconds + 2); 
+
+                const wavData = audioBufferToWav(buffer.get());
+                const blob = new Blob([new DataView(wavData)], { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                
+                // 強制加入 DOM 以確保瀏覽器不阻擋下載
+                const anchor = document.createElement("a"); 
+                anchor.download = "Score_Export.wav"; 
+                anchor.href = url; 
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
+                URL.revokeObjectURL(url);
+
+                btn.innerText = "⬇️ .wav"; 
+                btn.disabled = false;
+            } catch(e) {
+                console.error("WAV Export Error:", e);
+                alert("匯出發生錯誤，請稍後再試或更換瀏覽器。");
+                const btn = document.getElementById('export-btn'); 
+                btn.innerText = "⬇️ .wav"; 
+                btn.disabled = false;
+            }
         }
 
         function audioBufferToWav(buffer) {
