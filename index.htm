@@ -6,6 +6,12 @@
     <title>藍田循道衞理小學 校本打譜網站</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- 動態控制列印方向的 Style 標籤 -->
+    <style id="print-style">
+        @page { size: portrait; margin: 15mm; }
+    </style>
+
     <style>
         :root {
             --primary: #4f46e5; --primary-dark: #3730a3; --primary-light: #e0e7ff;
@@ -143,25 +149,24 @@
 
         #score-header { display: flex; justify-content: center; position: relative; margin-bottom: 30px; min-height: 60px; width: 100%; }
         .score-title-display { font-size: 32px; font-weight: 900; color: var(--text-main); text-align: center; max-width: 60%; letter-spacing: 1px;}
-        
-        /* 學生資料排版：一列顯示 */
         .score-student-info { position: absolute; right: 10px; top: 0; text-align: right; font-size: 16px; font-weight: 600; color: var(--text-main); white-space: pre; }
         
-        #score-container { cursor: crosshair; position: relative; }
+        #score-container { cursor: crosshair; position: relative; display: flex; justify-content: center; }
         #svg-playback-cursor { transition: x 0.05s linear, width 0.05s linear; }
 
         @media (max-width: 950px) {
             .top-header-row { flex-direction: column; }
             .btn-shortcut { width: 100%; }
             #score-wrapper { padding: 20px; }
-            .score-student-info { font-size: 13px; right: 0; }
+            .score-student-info { font-size: 14px; right: 0; }
         }
 
+        /* 完美列印排版 */
         @media print {
-            @page { margin: 0; size: auto; } 
-            body { background: white; padding: 1.5cm; } 
+            body { background: white; padding: 0 !important; margin: 0 !important; } 
             .toolbar-container, h2, .modal-overlay { display: none !important; } 
-            #score-wrapper { box-shadow: none; border: none; padding: 0; max-width: 100%; height: auto; overflow: visible; }
+            #score-wrapper { box-shadow: none; border: none; padding: 1cm; max-width: 100%; height: auto !important; overflow: visible !important; }
+            #score-container svg { width: 100% !important; height: auto !important; }
         }
     </style>
 </head>
@@ -169,6 +174,7 @@
 
     <h2>🎼 藍田循道衞理小學 校本打譜網站</h2>
 
+    <!-- 快捷鍵視窗 -->
     <div id="shortcut-modal" class="modal-overlay" onclick="closeShortcuts(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="modal-close" onclick="closeShortcuts(event)">&times;</span>
@@ -257,7 +263,12 @@
                 <input type="number" id="tempo-input" min="40" max="200" value="100">
                 <button class="btn-play" id="btn-play" onclick="togglePlay()">▶ 播放</button>
                 <button class="btn-export" id="export-btn" onclick="exportWav()">⬇️ .wav</button>
-                <button onclick="window.print()">🖨️ 列印 / PDF</button>
+                <select id="print-mode-select" onchange="updatePrintLayout()" style="background-color: var(--text-main); color: white; border: none; margin-left: 5px;">
+                    <option value="portrait">一般縱向</option>
+                    <option value="portrait-large">縱向放大 (4小節/行)</option>
+                    <option value="landscape-large">橫向放大 (4小節/行)</option>
+                </select>
+                <button onclick="window.print()">🖨️ 列印/PDF</button>
             </div>
         </div>
 
@@ -349,13 +360,14 @@
                         <button class="solfege-btn c-teal" data-deg="4" data-oct="-1" onclick="addSolfegeNote(4, -1)">so,</button>
                         <button class="solfege-btn c-blue" data-deg="5" data-oct="-1" onclick="addSolfegeNote(5, -1)">la,</button>
                         <button class="solfege-btn c-purple" data-deg="6" data-oct="-1" onclick="addSolfegeNote(6, -1)">ti,</button>
-                        <div style="flex: 1;"></div>
+                        <button class="solfege-btn c-red" data-deg="0" data-oct="0" onclick="addSolfegeNote(0, 0)">do</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 樂譜工作區 -->
     <div id="score-wrapper">
         <div id="score-header">
             <div class="score-title-display" id="display-song-title">未命名樂曲</div>
@@ -428,13 +440,24 @@
             let num = document.getElementById('input-num').value.trim() || " ";
             
             document.getElementById('display-song-title').innerText = title;
-            document.getElementById('display-student-info').innerText = `姓名：___${name}______ 班別：__${cls}__( ${num} )`;
+            document.getElementById('display-student-info').innerText = `姓名：${name}  班別：${cls} ( ${num} )`;
 
             let showTitle = document.getElementById('chk-show-title').checked;
             let showInfo = document.getElementById('chk-show-info').checked;
             document.getElementById('display-song-title').style.display = showTitle ? 'block' : 'none';
             document.querySelector('.score-student-info').style.display = showInfo ? 'block' : 'none';
             document.getElementById('score-header').style.display = (!showTitle && !showInfo) ? 'none' : 'flex';
+        }
+
+        function updatePrintLayout() {
+            let mode = document.getElementById('print-mode-select').value;
+            let styleEl = document.getElementById('print-style');
+            if (mode === 'landscape-large') {
+                styleEl.innerHTML = "@page { size: landscape; margin: 15mm; }";
+            } else {
+                styleEl.innerHTML = "@page { size: portrait; margin: 15mm; }";
+            }
+            renderScore();
         }
 
         function updateInputLabels() {
@@ -471,6 +494,7 @@
 
         document.addEventListener('keydown', function(event) {
             if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') return;
+            
             if (event.ctrlKey && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); return; }
             const key = event.key.toLowerCase();
             if (key === 'backspace') { event.preventDefault(); deleteLastNote(); return; }
@@ -559,23 +583,6 @@
         function addSolfegeNote(degreeIndex, octaveOffset) {
             let baseNote = diatonicMaps[currentKeySig][degreeIndex];
             addNote(baseNote.l, (baseNote.o + octaveOffset).toString(), degreeIndex);
-        }
-
-        function resetScore() {
-            saveState(); 
-            if(!confirm("確定要重新創作嗎？所有進度將會遺失。")) return;
-            measures = [ [] ]; activeMeasureIndex = 0;
-            currentDuration = 'q'; currentTimeSig = '4/4'; currentKeySig = 'C';
-            isDotted = false; activeAccidental = null;
-            document.getElementById('tempo-input').value = '100';
-            document.getElementById('time-sig-select').value = '4/4';
-            document.getElementById('key-sig-select').value = 'C';
-            changeKeySig('C'); 
-            
-            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('btn-q').classList.add('active'); 
-            document.getElementById('btn-dot').classList.remove('active');
-            updateMeasureIndicator(); renderScore();
         }
 
         function updateMeasureIndicator() { document.getElementById('measure-indicator').innerText = `第 ${activeMeasureIndex + 1} 節`; }
@@ -772,9 +779,21 @@
             const container = document.getElementById("score-container");
             container.innerHTML = ""; renderedStavesInfo = []; vexNotesCache = [];
             
+            let printMode = document.getElementById('print-mode-select').value;
             let wrapperWidth = wrapper.clientWidth - 80;
-            const PAGE_WIDTH = Math.max(800, wrapperWidth); 
-            const MARGIN = 10; const MAX_X = PAGE_WIDTH - MARGIN; 
+            let PAGE_WIDTH = 1000;
+            let maxMeasuresPerLine = 999;
+            
+            if (isPrinting) {
+                if (printMode === 'portrait') { PAGE_WIDTH = 750; }
+                else if (printMode === 'portrait-large') { PAGE_WIDTH = 800; maxMeasuresPerLine = 4; }
+                else if (printMode === 'landscape-large') { PAGE_WIDTH = 1100; maxMeasuresPerLine = 4; }
+            } else {
+                PAGE_WIDTH = Math.max(800, wrapperWidth);
+            }
+
+            const MARGIN = 15; 
+            const MAX_X = PAGE_WIDTH - 25; // 縮小邊界以確保最後小節線列印成功
             
             let isRhythmMode = (currentKeySig === 'Rhythm');
             let useColor = document.getElementById('chk-color-notes').checked && !isRhythmMode;
@@ -808,7 +827,8 @@
                 let clefWidth = needsClefInfo ? (isRhythmMode ? 60 : 120) : 30; 
                 let calculatedWidth = Math.max(clefWidth + ml.minRequiredWidth + 40, needsClefInfo ? 200 : 150); 
 
-                if (currentX + calculatedWidth > MAX_X && !isFirstOnLine) {
+                // 檢查是否超出邊界，或已達到該行列印小節上限
+                if ((currentX + calculatedWidth > MAX_X && !isFirstOnLine) || (currentLine.length >= maxMeasuresPerLine && !isFirstOnLine)) {
                     lines.push(currentLine); currentLine = [ml];
                     ml.needsClefInfo = true; ml.clefWidth = (isRhythmMode ? 60 : 120);
                     ml.calculatedWidth = Math.max(ml.clefWidth + ml.minRequiredWidth + 40, 200);
@@ -906,25 +926,24 @@
             }
 
             renderer.resize(PAGE_WIDTH, currentY + 20);
-            updateRhythmButtonsState(); 
 
-            wrapper.scrollTop = prevScrollTop;
-            wrapper.scrollLeft = prevScrollLeft;
+            // 完美列印版面的 SVG 自動縮放
+            if (isPrinting && svg) {
+                svg.setAttribute("viewBox", `0 0 ${PAGE_WIDTH} ${currentY + 20}`);
+                svg.style.width = "100%";
+                svg.style.height = "auto";
+            }
+
+            updateRhythmButtonsState(); 
+            wrapper.scrollTop = prevScrollTop; wrapper.scrollLeft = prevScrollLeft;
             window.scrollTo(window.scrollX, prevWindowScrollY);
 
             if (!isPrinting) {
                 let activeStave = renderedStavesInfo.find(s => s.index === activeMeasureIndex);
                 if (activeStave) {
-                    let staveTop = activeStave.y;
                     let staveBottom = activeStave.y + 160;
-                    let wrapperViewTop = wrapper.scrollTop;
-                    let wrapperViewBottom = wrapper.scrollTop + wrapper.clientHeight;
-
-                    if (staveBottom > wrapperViewBottom - 20) {
-                        wrapper.scrollTop = staveBottom - wrapper.clientHeight + 40;
-                    } else if (staveTop < wrapperViewTop + 20) {
-                        wrapper.scrollTop = Math.max(0, staveTop - 40);
-                    }
+                    if (staveBottom > wrapper.scrollTop + wrapper.clientHeight - 20) wrapper.scrollTop = staveBottom - wrapper.clientHeight + 40;
+                    else if (activeStave.y < wrapper.scrollTop + 20) wrapper.scrollTop = Math.max(0, activeStave.y - 40);
                 }
             }
         }
@@ -1012,7 +1031,7 @@
                 btn.innerText = "⏳ 運算中..."; 
                 btn.disabled = true;
 
-                // 讓瀏覽器有時間渲染按鈕文字
+                // 等待 UI 更新
                 await new Promise(resolve => setTimeout(resolve, 50));
 
                 let bpm = parseInt(document.getElementById('tempo-input').value) || 100;
@@ -1040,7 +1059,7 @@
                 const blob = new Blob([new DataView(wavData)], { type: 'audio/wav' });
                 const url = URL.createObjectURL(blob);
                 
-                // 強制加入 DOM 以確保瀏覽器不阻擋下載
+                // 強制加入 DOM 觸發下載
                 const anchor = document.createElement("a"); 
                 anchor.download = "Score_Export.wav"; 
                 anchor.href = url; 
@@ -1053,7 +1072,7 @@
                 btn.disabled = false;
             } catch(e) {
                 console.error("WAV Export Error:", e);
-                alert("匯出發生錯誤，請稍後再試或更換瀏覽器。");
+                alert("匯出發生錯誤，請稍後再試。");
                 const btn = document.getElementById('export-btn'); 
                 btn.innerText = "⬇️ .wav"; 
                 btn.disabled = false;
@@ -1088,7 +1107,7 @@
 
         window.addEventListener('resize', () => { if(measures.length > 0) renderScore(); });
 
-        updateScoreHeader(); updateInputLabels(); renderScore();
+        updateScoreHeader(); updatePrintLayout(); updateInputLabels(); renderScore();
     </script>
 </body>
 </html>
