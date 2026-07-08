@@ -7,9 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     
-    <!-- 動態控制列印方向的 Style 標籤 -->
     <style id="print-style">
-        @page { size: portrait; margin: 15mm; }
+        @page { size: portrait; margin: 0; }
     </style>
 
     <style>
@@ -133,40 +132,41 @@
         .shortcut-panel-inner { display: flex; flex-wrap: wrap; gap: 15px; font-size: 14px; color: var(--primary-dark); margin-top: 15px; line-height: 2; }
         .kbd { background-color: #fff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 4px 10px; font-family: monospace; font-weight: 800; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: #3730a3; }
 
-        /* 樂譜工作區 */
+        /* 【深度修正】樂譜工作區：確保 SVG 能在平板上響應式縮放，不被切斷 */
         #score-wrapper {
             width: 100%; max-width: 1200px; background-color: #ffffff; 
             border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); 
             padding: 40px; box-sizing: border-box; border: 1px solid var(--border);
-            height: 760px; max-height: 75vh; overflow-y: auto; overflow-x: auto; scroll-behavior: smooth;
+            min-height: 500px;
             user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; flex-grow: 1;
         }
         
-        #score-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }
-        #score-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
-        #score-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; border: 2px solid #f1f5f9; }
-        #score-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
         #score-header { display: flex; justify-content: center; position: relative; margin-bottom: 30px; min-height: 60px; width: 100%; }
         .score-title-display { font-size: 32px; font-weight: 900; color: var(--text-main); text-align: center; max-width: 60%; letter-spacing: 1px;}
         .score-student-info { position: absolute; right: 10px; top: 0; text-align: right; font-size: 16px; font-weight: 600; color: var(--text-main); white-space: pre; }
         
-        #score-container { cursor: crosshair; position: relative; display: flex; justify-content: center; }
+        /* 移除 flex 與 center，讓 SVG 完整保留左側譜號 */
+        #score-container { cursor: crosshair; position: relative; width: 100%; }
         #svg-playback-cursor { transition: x 0.05s linear, width 0.05s linear; }
 
         @media (max-width: 950px) {
             .top-header-row { flex-direction: column; }
             .btn-shortcut { width: 100%; }
-            #score-wrapper { padding: 20px; }
+            #score-wrapper { padding: 15px; }
             .score-student-info { font-size: 14px; right: 0; }
         }
 
-        /* 完美列印排版 */
+        /* 完美無痕列印排版 */
         @media print {
-            body { background: white; padding: 0 !important; margin: 0 !important; } 
+            @page { margin: 0; size: auto; } 
+            body { background: white; padding: 10mm 15mm !important; margin: 0 !important; } 
             .toolbar-container, h2, .modal-overlay { display: none !important; } 
-            #score-wrapper { box-shadow: none; border: none; padding: 1cm; max-width: 100%; height: auto !important; overflow: visible !important; }
-            #score-container svg { width: 100% !important; height: auto !important; }
+            #score-wrapper { 
+                box-shadow: none !important; border: none !important; padding: 0 !important; 
+                max-width: 100% !important; height: auto !important; max-height: none !important; 
+                overflow: visible !important; margin: 0 !important;
+            }
+            #score-container svg { width: 100% !important; height: auto !important; display: block; margin: 0 auto; }
         }
     </style>
 </head>
@@ -214,11 +214,11 @@
                     </div>
                     <div class="student-input-group">
                         <label>姓名：</label>
-                        <input type="text" id="input-name" oninput="updateScoreHeader()" placeholder="你的名字" style="width: 100px;">
+                        <input type="text" id="input-name" oninput="updateScoreHeader()" placeholder="陳小明" style="width: 100px;">
                     </div>
                     <div class="student-input-group">
                         <label>學號：</label>
-                        <input type="number" id="input-num" oninput="updateScoreHeader()" placeholder="15" style="width: 60px;">
+                        <input type="number" id="input-num" oninput="updateScoreHeader()" placeholder="1" style="width: 60px;">
                     </div>
                     <div class="student-input-group" style="margin-left: auto; background: #fff; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);">
                         <label style="cursor: pointer; font-weight: normal; font-size: 13px;"><input type="checkbox" id="chk-show-title" checked onchange="updateScoreHeader()"> 顯示標題</label>
@@ -263,12 +263,8 @@
                 <input type="number" id="tempo-input" min="40" max="200" value="100">
                 <button class="btn-play" id="btn-play" onclick="togglePlay()">▶ 播放</button>
                 <button class="btn-export" id="export-btn" onclick="exportWav()">⬇️ .wav</button>
-                <select id="print-mode-select" onchange="updatePrintLayout()" style="background-color: var(--text-main); color: white; border: none; margin-left: 5px;">
-                    <option value="portrait">一般縱向</option>
-                    <option value="portrait-large">縱向放大 (4小節/行)</option>
-                    <option value="landscape-large">橫向放大 (4小節/行)</option>
-                </select>
-                <button onclick="window.print()">🖨️ 列印/PDF</button>
+                <!-- 【修正】刪除了列印選項，只保留一般列印 -->
+                <button onclick="window.print()">🖨️ 列印 / PDF</button>
             </div>
         </div>
 
@@ -299,8 +295,8 @@
                     <input type="text" id="note-text-input" placeholder="自訂文字(如指法)">
                     <select id="auto-annotate-select">
                         <option value="none" selected>無自動標記</option>
-                        <option value="solfege">自動標註唱名 (d, r, m)</option>
-                        <option value="note">自動標註音名 (C, D, E)</option>
+                        <option value="solfege">自動唱名 (d, r, m)</option>
+                        <option value="note">自動音名 (C, D, E)</option>
                     </select>
                     <select id="note-text-pos">
                         <option value="top">放上方</option>
@@ -315,8 +311,8 @@
                 <div class="tool-group" style="border: none; padding: 0;">
                     <span class="tool-label">輸入模式</span>
                     <select id="input-mode-select" onchange="updateInputLabels()" style="padding: 6px 10px; font-size: 13px;">
-                        <option value="solfege" selected>唱名 (do, re, mi)</option>
-                        <option value="notename">音名 (C, D, E)</option>
+                        <option value="solfege" selected>唱名</option>
+                        <option value="notename">音名</option>
                     </select>
                 </div>
                 
@@ -371,7 +367,7 @@
     <div id="score-wrapper">
         <div id="score-header">
             <div class="score-title-display" id="display-song-title">未命名樂曲</div>
-            <div class="score-student-info" id="display-student-info">姓名：_________ 班別：____(   )</div>
+            <div class="score-student-info" id="display-student-info">姓名：_____________     班別：____(   )</div>
         </div>
         <div id="score-container"></div>
     </div>
@@ -435,29 +431,18 @@
         
         function updateScoreHeader() {
             let title = document.getElementById('input-song-title').value.trim() || "未命名樂曲";
-            let cls = document.getElementById('input-class').value.trim() || "  ";
-            let name = document.getElementById('input-name').value.trim() || "   ";
-            let num = document.getElementById('input-num').value.trim() || " ";
+            let cls = document.getElementById('input-class').value.trim() || "____";
+            let name = document.getElementById('input-name').value.trim() || "__________";
+            let num = document.getElementById('input-num').value.trim() || "   ";
             
             document.getElementById('display-song-title').innerText = title;
-            document.getElementById('display-student-info').innerText = `姓名：${name}  班別：${cls} ( ${num} )`;
+            document.getElementById('display-student-info').innerText = `姓名：${name}     班別：${cls} ( ${num} )`;
 
             let showTitle = document.getElementById('chk-show-title').checked;
             let showInfo = document.getElementById('chk-show-info').checked;
             document.getElementById('display-song-title').style.display = showTitle ? 'block' : 'none';
             document.querySelector('.score-student-info').style.display = showInfo ? 'block' : 'none';
             document.getElementById('score-header').style.display = (!showTitle && !showInfo) ? 'none' : 'flex';
-        }
-
-        function updatePrintLayout() {
-            let mode = document.getElementById('print-mode-select').value;
-            let styleEl = document.getElementById('print-style');
-            if (mode === 'landscape-large') {
-                styleEl.innerHTML = "@page { size: landscape; margin: 15mm; }";
-            } else {
-                styleEl.innerHTML = "@page { size: portrait; margin: 15mm; }";
-            }
-            renderScore();
         }
 
         function updateInputLabels() {
@@ -770,25 +755,18 @@
             return beams;
         }
 
+        // --- 核心繪圖渲染 (支援響應式與置中) ---
         function renderScore() {
-            const wrapper = document.getElementById("score-wrapper");
-            let prevScrollTop = wrapper.scrollTop;
-            let prevScrollLeft = wrapper.scrollLeft;
-            let prevWindowScrollY = window.scrollY;
-
             const container = document.getElementById("score-container");
             container.innerHTML = ""; renderedStavesInfo = []; vexNotesCache = [];
             
-            let printMode = document.getElementById('print-mode-select').value;
-            let wrapperWidth = wrapper.clientWidth - 80;
-            let PAGE_WIDTH = 1000;
-            let maxMeasuresPerLine = 999;
+            let wrapperWidth = document.getElementById("score-wrapper").clientWidth - 40; 
+            let PAGE_WIDTH = 800; // 一般縱向預設寬度
             
             if (isPrinting) {
-                if (printMode === 'portrait') { PAGE_WIDTH = 750; }
-                else if (printMode === 'portrait-large') { PAGE_WIDTH = 800; maxMeasuresPerLine = 4; }
-                else if (printMode === 'landscape-large') { PAGE_WIDTH = 1100; maxMeasuresPerLine = 4; }
+                PAGE_WIDTH = 800; // 強制固定縱向寬度
             } else {
+                // 平板自適應
                 PAGE_WIDTH = Math.max(800, wrapperWidth);
             }
 
@@ -827,8 +805,7 @@
                 let clefWidth = needsClefInfo ? (isRhythmMode ? 60 : 120) : 30; 
                 let calculatedWidth = Math.max(clefWidth + ml.minRequiredWidth + 40, needsClefInfo ? 200 : 150); 
 
-                // 檢查是否超出邊界，或已達到該行列印小節上限
-                if ((currentX + calculatedWidth > MAX_X && !isFirstOnLine) || (currentLine.length >= maxMeasuresPerLine && !isFirstOnLine)) {
+                if (currentX + calculatedWidth > MAX_X && !isFirstOnLine) {
                     lines.push(currentLine); currentLine = [ml];
                     ml.needsClefInfo = true; ml.clefWidth = (isRhythmMode ? 60 : 120);
                     ml.calculatedWidth = Math.max(ml.clefWidth + ml.minRequiredWidth + 40, 200);
@@ -927,25 +904,14 @@
 
             renderer.resize(PAGE_WIDTH, currentY + 20);
 
-            // 完美列印版面的 SVG 自動縮放
-            if (isPrinting && svg) {
+            if (svg) {
+                // 自動響應式縮放設定 (完美解決平板版面)
                 svg.setAttribute("viewBox", `0 0 ${PAGE_WIDTH} ${currentY + 20}`);
-                svg.style.width = "100%";
-                svg.style.height = "auto";
+                svg.style.width = "100%"; svg.style.height = "auto";
+                svg.removeAttribute("width"); svg.removeAttribute("height");
             }
 
             updateRhythmButtonsState(); 
-            wrapper.scrollTop = prevScrollTop; wrapper.scrollLeft = prevScrollLeft;
-            window.scrollTo(window.scrollX, prevWindowScrollY);
-
-            if (!isPrinting) {
-                let activeStave = renderedStavesInfo.find(s => s.index === activeMeasureIndex);
-                if (activeStave) {
-                    let staveBottom = activeStave.y + 160;
-                    if (staveBottom > wrapper.scrollTop + wrapper.clientHeight - 20) wrapper.scrollTop = staveBottom - wrapper.clientHeight + 40;
-                    else if (activeStave.y < wrapper.scrollTop + 20) wrapper.scrollTop = Math.max(0, activeStave.y - 40);
-                }
-            }
         }
 
         async function togglePlay() {
@@ -1000,10 +966,8 @@
                                 let cursor = document.getElementById("svg-playback-cursor");
                                 if (cursor) {
                                     let noteX = vNote.getAbsoluteX();
-                                    cursor.setAttribute("x", noteX - 10);
-                                    cursor.setAttribute("y", staveY);
-                                    cursor.setAttribute("width", 30);
-                                    cursor.setAttribute("height", 90);
+                                    cursor.setAttribute("x", noteX - 10); cursor.setAttribute("y", staveY);
+                                    cursor.setAttribute("width", 30); cursor.setAttribute("height", 90);
                                     cursor.setAttribute("display", "block");
                                 }
                             }, time);
@@ -1015,10 +979,7 @@
                 });
             });
 
-            Tone.Transport.schedule((time) => {
-                Tone.Draw.schedule(() => { stopPlayback(); }, time);
-            }, timeOffset);
-
+            Tone.Transport.schedule((time) => { Tone.Draw.schedule(() => { stopPlayback(); }, time); }, timeOffset);
             Tone.Transport.start();
         }
 
@@ -1031,7 +992,7 @@
                 btn.innerText = "⏳ 運算中..."; 
                 btn.disabled = true;
 
-                // 等待 UI 更新
+                // 讓出線程，讓瀏覽器更新 UI
                 await new Promise(resolve => setTimeout(resolve, 50));
 
                 let bpm = parseInt(document.getElementById('tempo-input').value) || 100;
@@ -1059,23 +1020,21 @@
                 const blob = new Blob([new DataView(wavData)], { type: 'audio/wav' });
                 const url = URL.createObjectURL(blob);
                 
-                // 強制加入 DOM 觸發下載
                 const anchor = document.createElement("a"); 
-                anchor.download = "Score_Export.wav"; 
+                anchor.style.display = "none";
                 anchor.href = url; 
+                anchor.download = "Score_Export.wav"; 
                 document.body.appendChild(anchor);
                 anchor.click();
-                document.body.removeChild(anchor);
-                URL.revokeObjectURL(url);
+                
+                setTimeout(() => { document.body.removeChild(anchor); URL.revokeObjectURL(url); }, 100);
 
-                btn.innerText = "⬇️ .wav"; 
-                btn.disabled = false;
+                btn.innerText = "⬇️ .wav"; btn.disabled = false;
             } catch(e) {
                 console.error("WAV Export Error:", e);
                 alert("匯出發生錯誤，請稍後再試。");
                 const btn = document.getElementById('export-btn'); 
-                btn.innerText = "⬇️ .wav"; 
-                btn.disabled = false;
+                btn.innerText = "⬇️ .wav"; btn.disabled = false;
             }
         }
 
@@ -1107,7 +1066,7 @@
 
         window.addEventListener('resize', () => { if(measures.length > 0) renderScore(); });
 
-        updateScoreHeader(); updatePrintLayout(); updateInputLabels(); renderScore();
+        updateScoreHeader(); updateInputLabels(); renderScore();
     </script>
 </body>
 </html>
