@@ -148,7 +148,7 @@
         /* 鎖定兩行高度並加入滾輪 */
         #score-container { 
             cursor: crosshair; position: relative; width: 100%; 
-            height: 380px; /* 約兩行高度 (50 + 160 + 160 + padding) */
+            height: 380px; /* 約兩行高度 */
             overflow-y: auto; overflow-x: hidden;
             border-top: 1px solid #f1f5f9; padding-top: 10px;
         }
@@ -437,6 +437,17 @@
                 updateMeasureIndicator();
             }
             renderScore();
+        }
+
+        // --- 新增的重設樂譜功能 ---
+        function resetScore() {
+            if (confirm("確定要清空整份樂譜嗎？此動作無法還原。")) {
+                measures = [ [] ];
+                activeMeasureIndex = 0;
+                historyStack = [];
+                updateMeasureIndicator();
+                renderScore();
+            }
         }
 
         function closeShortcuts(e) { document.getElementById('shortcut-modal').classList.remove('active'); }
